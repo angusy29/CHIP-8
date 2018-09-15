@@ -8,6 +8,7 @@ int main() {
         // fetch next instruction
         // decode instruction
         // execute
+        chip.emulate_cycle();
     }
 
     return 0;
