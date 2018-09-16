@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include "chip_8.h"
+#include "mmu.h"
+#include "graphics.h"
 
 int main() {
     MMU mmu;
-    CHIP_8 chip(mmu);
+    Graphics graphics;
+    CHIP_8 chip(mmu, graphics);
 
     mmu.load_game("pong.rom");
     // mmu.print_rom();

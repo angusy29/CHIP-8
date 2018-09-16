@@ -1,6 +1,6 @@
 #include "chip_8.h"
 
-CHIP_8::CHIP_8(MMU &mmu) {
+CHIP_8::CHIP_8(MMU &mmu, Graphics &graphics) {
     _pc = 0x200;
     _index = 0;
     _sp = 0;
@@ -9,6 +9,28 @@ CHIP_8::CHIP_8(MMU &mmu) {
     memset(_stack, 0, sizeof(_stack));      // clear stack
     memset(_key, 0, sizeof(_key));          // clear keypad
     _mmu = mmu;
+    _graphics = graphics;
+
+    // store font set
+    _fontset =
+    {
+        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+    };
 }
 
 void CHIP_8::emulate_cycle() {
@@ -54,21 +76,21 @@ void CHIP_8::emulate_cycle() {
         case 0xA000: LD_I_addr(instruction); break;
         case 0xB000: JP_V0_addr(instruction); break;
         case 0xC000: RND_Vx_byte(instruction); break;
-        case 0xD000: DRW_Vx_Vy_nibble(); break;
+        case 0xD000: DRW_Vx_Vy_nibble(instruction); break;
         case 0xE000:
             switch (instruction & 0xFF) {
-                case 0x009E: SKP_Vx(); break;
-                case 0x00A1: SKNP_Vx(); break;
+                case 0x009E: SKP_Vx(instruction); break;
+                case 0x00A1: SKNP_Vx(instruction); break;
                 default: break;
             }
         case 0xF000:
             switch (instruction & 0xFF) {
-                case 0x0007: LD_Vx_DT(); break;
-                case 0x000A: LD_Vx_K(); break;
-                case 0x0015: LD_DT_Vx(); break;
-                case 0x0018: LD_ST_Vx(); break;
+                case 0x0007: LD_Vx_DT(instruction); break;
+                case 0x000A: LD_Vx_K(instruction); break;
+                case 0x0015: LD_DT_Vx(instruction); break;
+                case 0x0018: LD_ST_Vx(instruction); break;
                 case 0x001E: ADD_I_Vx(instruction); break;
-                case 0x0029: LD_F_Vx(); break;
+                case 0x0029: LD_F_Vx(instruction); break;
                 case 0x0033: LD_B_Vx(instruction); break;
                 case 0x0055: LD_I_Vx(instruction); break;
                 case 0x0065: LD_Vx_I(instruction); break;
@@ -104,180 +126,216 @@ void CHIP_8::stack_pop() {
     _pc += 2;
 }
 
-int CHIP_8::CHIP_8::SYS_addr(uint16_t instruction) {
+void CHIP_8::CHIP_8::SYS_addr(uint16_t instruction) {
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::CLS() {
+void CHIP_8::CLS() {
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::RET() {
+
+void CHIP_8::RET() {
     stack_pop();
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::JP_addr(uint16_t instruction) {
+void CHIP_8::JP_addr(uint16_t instruction) {
     _pc = (instruction & 0xFFF);
-    return 0;
 }
 
-int CHIP_8::CALL_addr(uint16_t instruction) {
+void CHIP_8::CALL_addr(uint16_t instruction) {
     stack_push();
     _pc = (instruction & 0xFFF);
-    return 0;
 }
 
-int CHIP_8::SE_Vx_byte(uint16_t instruction) {
+void CHIP_8::SE_Vx_byte(uint16_t instruction) {
     if (_v[(instruction & 0x0F00) >> 8] == (instruction & 0xFF))
         _pc += 4;
     else
         _pc += 2;
-
-    return 0;
 }
 
-int CHIP_8::SNE_Vx_byte(uint16_t instruction) { 
+void CHIP_8::SNE_Vx_byte(uint16_t instruction) { 
     if (_v[(instruction & 0x0F00) >> 8] != (instruction & 0xFF))
         _pc += 4;
     else
         _pc += 2;
-
-    return 0;
 }
 
-int CHIP_8::SE_Vx_Vy(uint16_t instruction) {
+void CHIP_8::SE_Vx_Vy(uint16_t instruction) {
     if (_v[(instruction & 0x0F00) >> 8] == _v[(instruction & 0x00F0) >> 4])
         _pc += 4;
     else
         _pc += 2;
-    return 0;
 }
 
-int CHIP_8::LD_Vx_byte(uint16_t instruction) {
+void CHIP_8::LD_Vx_byte(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] = _v[instruction & 0x00FF];
     _pc += 2;
-    return 0;
+    
 }
 
-int CHIP_8::ADD_Vx_byte(uint16_t instruction) {
+void CHIP_8::ADD_Vx_byte(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] = (_v[(instruction & 0x0F00) >> 8] + _v[instruction & 0xFF]) & 0xFF;
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::LD_Vx_Vy(uint16_t instruction) {
+void CHIP_8::LD_Vx_Vy(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] = _v[(instruction & 0x0F00) >> 4];
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::OR_Vx_Vy(uint16_t instruction) {
+void CHIP_8::OR_Vx_Vy(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] |= _v[(instruction & 0x0F00) >> 4];
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::AND_Vx_Vy(uint16_t instruction) { 
+void CHIP_8::AND_Vx_Vy(uint16_t instruction) { 
     _v[(instruction & 0x0F00) >> 8] &= _v[(instruction & 0x0F00) >> 4];
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::XOR_Vx_Vy(uint16_t instruction) { 
+void CHIP_8::XOR_Vx_Vy(uint16_t instruction) { 
     _v[(instruction & 0x0F00) >> 8] ^= _v[(instruction & 0x0F00) >> 4];
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::ADD_Vx_Vy(uint16_t instruction) {
-    auto val = _v[(instruction & 0x0F00) >> 8] + _v[(instruction & 0x0F00) >> 4];
+void CHIP_8::ADD_Vx_Vy(uint16_t instruction) {
+    auto val = _v[(instruction & 0x0F00) >> 8] + _v[(instruction & 0x00F0) >> 4];
     _v[0xF] = 1 ? val > 0xFF : 0;
     _v[(instruction & 0x0F00) >> 8] = val & 0xFF;
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::SUB_Vx_Vy(uint16_t instruction) {
-    _v[0xF] = 1 ? _v[(instruction & 0x0F00) >> 8] > _v[(instruction & 0x0F00) >> 4] : 0;
+void CHIP_8::SUB_Vx_Vy(uint16_t instruction) {
+    _v[0xF] = 1 ? _v[(instruction & 0x0F00) >> 8] > _v[(instruction & 0x00F0) >> 4] : 0;
    _v[(instruction & 0x0F00) >> 8] -= _v[(instruction & 0x0F00) >> 4];
    _pc += 2;
-   return 0;
 }
 
-int CHIP_8::SHR_Vx_Vy(uint16_t instruction) { 
+void CHIP_8::SHR_Vx_Vy(uint16_t instruction) { 
     _v[0xF] = _v[(instruction & 0x0F00) >> 8] & 0x1;
     _v[(instruction & 0x0F00) >> 8] >>= 1;
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::SUBN_Vx_Vy(uint16_t instruction) {
-    _v[0xF] = 1 ? _v[(instruction & 0x0F00) >> 4] > _v[(instruction & 0x0F00) >> 8] : 0;
-    _v[(instruction & 0x0F00) >> 8] = _v[(instruction & 0x0F00) >> 4] - _v[(instruction & 0x0F00) >> 8];
+void CHIP_8::SUBN_Vx_Vy(uint16_t instruction) {
+    _v[0xF] = 1 ? _v[(instruction & 0x00F0) >> 4] > _v[(instruction & 0x0F00) >> 8] : 0;
+    _v[(instruction & 0x0F00) >> 8] = _v[(instruction & 0x00F0) >> 4] - _v[(instruction & 0x0F00) >> 8];
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::SHL_Vx(uint16_t instruction) {
+void CHIP_8::SHL_Vx(uint16_t instruction) {
     _v[0xF] = _v[(instruction & 0x0F00) >> 8] & 0x1;
     _v[(instruction & 0x0F00) >> 8] <<= 1;
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::SNE_Vx_Vy(uint16_t instruction) {
-    if (_v[(instruction & 0x0F00) >> 8] != _v[(instruction & 0x0F00) >> 4])
+void CHIP_8::SNE_Vx_Vy(uint16_t instruction) {
+    if (_v[(instruction & 0x0F00) >> 8] != _v[(instruction & 0x00F0) >> 4])
         _pc += 4;
     else
         _pc += 2;
-    return 0;
+    
 }
 
-int CHIP_8::LD_I_addr(uint16_t instruction) {
+void CHIP_8::LD_I_addr(uint16_t instruction) {
     _index = instruction & 0xFFF;
     _pc += 2;
-    return 0;
+    
 }
 
-int CHIP_8::JP_V0_addr(uint16_t instruction) {
+void CHIP_8::JP_V0_addr(uint16_t instruction) {
     _pc = (instruction & 0xFFF) + _v[0];
-    return 0;
 }
 
-int CHIP_8::RND_Vx_byte(uint16_t instruction) {
+void CHIP_8::RND_Vx_byte(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] = (rand() % 256) & (instruction & 0xFF);
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::DRW_Vx_Vy_nibble() { return 0; }
-int CHIP_8::SKP_Vx() { return 0; }
-int CHIP_8::SKNP_Vx() { return 0; }
-int CHIP_8::LD_Vx_DT() { return 0; }
-int CHIP_8::LD_Vx_K() { return 0; }
-int CHIP_8::LD_DT_Vx() { return 0; }
-int CHIP_8::LD_ST_Vx() { return 0; }
-int CHIP_8::ADD_I_Vx(uint16_t instruction) {
+void CHIP_8::DRW_Vx_Vy_nibble(uint16_t instruction) {
+    auto vx = (instruction & 0x0F00) >> 8;
+    auto vy = (instruction & 0x00F0) >> 4;
+    auto nibble = (instruction & 0x000F);
+    
+    uint8_t pixel;
+
+    for (auto idx = _index; idx < _index + nibble; ++idx) {
+        pixel = _mmu.read_byte(idx);
+        // display at Vx, Vy coordinate
+        for (auto xline = 0; xline < 8; ++xline) {
+            if ((pixel & (0x80 >> xline)) != 0) {
+                if (_graphics.collision(vx + xline, vy + idx)) {
+                    _v[0xF] = 1;
+                }
+                _graphics.load_buffer(vx + xline, vy + idx);
+            }
+        }
+    }
+    _pc += 2;
+}
+
+void CHIP_8::SKP_Vx(uint16_t instruction) {
+    if ((_key[(instruction & 0x0F00)] >> 8) != 0)
+        _pc += 4;
+    else
+        _pc += 2;
+}
+void CHIP_8::SKNP_Vx(uint16_t instruction) {
+    if ((_key[(instruction & 0x0F00)] >> 8) == 0)
+        _pc += 4;
+    else
+        _pc += 2;
+}
+
+void CHIP_8::LD_Vx_DT(uint16_t instruction) {
+    _v[(instruction & 0x0F00) >> 8] = _delay_timer;
+    _pc += 2;
+}
+
+void CHIP_8::LD_Vx_K(uint16_t instruction) {
+    while (true) {
+        for (auto i = 0; i < 16; ++i) {
+            if (_key[i] != 0) {
+                _v[(instruction & 0x0F00) >> 8] = i;
+                _pc += 2;
+                return;
+            }
+        }
+    }
+}
+
+void CHIP_8::LD_DT_Vx(uint16_t instruction) {
+    _delay_timer = _v[(instruction & 0x0F00) >> 8];
+    _pc += 2;
+}
+
+void CHIP_8::LD_ST_Vx(uint16_t instruction) {
+    _sound_timer = _v[(instruction & 0x0F00) >> 8];
+    _pc += 2;
+}
+
+void CHIP_8::ADD_I_Vx(uint16_t instruction) {
     _index = (_index + _v[(instruction & 0x0F00) >> 8]) & 0xFF;
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::LD_F_Vx() { return 0; }
-int CHIP_8::LD_B_Vx(uint16_t instruction) {
+void CHIP_8::LD_F_Vx(uint16_t instruction) {
+    _index = _v[(instruction & 0x0F00) >> 8] * 0x5;
+    _pc += 2;
+}
+
+void CHIP_8::LD_B_Vx(uint16_t instruction) {
     auto reg = (instruction & 0x0F00) >> 8;
     _mmu.write_byte(_index, _v[reg] / 100);
     _mmu.write_byte(_index + 1, (_v[reg] / 10) % 10);
     _mmu.write_byte(_index + 2, _v[reg] % 10);
     _pc += 2;
-    return 0;
 }
 
-int CHIP_8::LD_I_Vx(uint16_t instruction) {
+void CHIP_8::LD_I_Vx(uint16_t instruction) {
     auto reg = (instruction & 0x0F00) >> 8;
     auto idx = _index;
     for (auto i = 0; i < reg; ++i) {
@@ -285,9 +343,9 @@ int CHIP_8::LD_I_Vx(uint16_t instruction) {
         ++idx;
     }
     _pc += 2;
-    return 0;
 }
-int CHIP_8::LD_Vx_I(uint16_t instruction) {
+
+void CHIP_8::LD_Vx_I(uint16_t instruction) {
     auto reg = (instruction & 0x0F00) >> 8;
     auto idx = _index;
     for (auto i = 0; i < reg; ++i) {
@@ -295,5 +353,4 @@ int CHIP_8::LD_Vx_I(uint16_t instruction) {
         ++idx;
     }
     _pc += 2;
-    return 0;
 }
