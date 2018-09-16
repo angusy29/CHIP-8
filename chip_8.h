@@ -21,8 +21,6 @@ class CHIP_8 {
         uint8_t _sp;            // 8 bit stack pointer to topmost level of stack
         uint16_t _stack[16];     // 16 levels of stack
 
-        std::array<int, 80> _fontset;
-
         // timer registers that count at 60Hz
         // when set above zero, they will count down to zero
         uint8_t _delay_timer;

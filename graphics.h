@@ -11,9 +11,10 @@ class Graphics {
 
         Graphics();
         void reset();
-        void load_buffer(uint8_t x, uint8_t y);
-        bool collision(uint8_t x, uint8_t y);
+        void load_buffer(uint16_t x, uint16_t y);
+        bool collision(uint16_t x, uint16_t y);
         std::array<int, 64 * 32> get_display_buffer();
+        void print_display();
 };
 
 #endif /* _GRAPHICS_H_ */

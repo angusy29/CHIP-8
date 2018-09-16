@@ -11,26 +11,7 @@ CHIP_8::CHIP_8(MMU &mmu, Graphics &graphics) {
     _mmu = mmu;
     _graphics = graphics;
 
-    // store font set
-    _fontset =
-    {
-        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-        0x20, 0x60, 0x20, 0x20, 0x70, // 1
-        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-        0xF0, 0x80, 0xF0, 0x80, 0x80  // F
-    };
+    srand(time(NULL));
 }
 
 void CHIP_8::emulate_cycle() {
@@ -165,27 +146,31 @@ void CHIP_8::CHIP_8::SYS_addr(uint16_t instruction) {
     _pc += 2;
 }
 
+// 0x00E0
 void CHIP_8::CLS() {
     _graphics.reset();
     _drawFlag = true;
     _pc += 2;
 }
 
-
+// 0x00EE
 void CHIP_8::RET() {
     stack_pop();
     _pc += 2;
 }
 
+// 0x1nnn
 void CHIP_8::JP_addr(uint16_t instruction) {
     _pc = instruction & 0xFFF;
 }
 
+// 0x2nnn
 void CHIP_8::CALL_addr(uint16_t instruction) {
     stack_push();
     _pc = instruction & 0xFFF;
 }
 
+// 0x3xkk
 void CHIP_8::SE_Vx_byte(uint16_t instruction) {
     if (_v[(instruction & 0x0F00) >> 8] == (instruction & 0xFF))
         _pc += 4;
@@ -193,6 +178,7 @@ void CHIP_8::SE_Vx_byte(uint16_t instruction) {
         _pc += 2;
 }
 
+// 0x4xkk
 void CHIP_8::SNE_Vx_byte(uint16_t instruction) { 
     if (_v[(instruction & 0x0F00) >> 8] != (instruction & 0xFF))
         _pc += 4;
@@ -200,6 +186,7 @@ void CHIP_8::SNE_Vx_byte(uint16_t instruction) {
         _pc += 2;
 }
 
+// 0x5xy0
 void CHIP_8::SE_Vx_Vy(uint16_t instruction) {
     if (_v[(instruction & 0x0F00) >> 8] == _v[(instruction & 0x00F0) >> 4])
         _pc += 4;
@@ -207,68 +194,79 @@ void CHIP_8::SE_Vx_Vy(uint16_t instruction) {
         _pc += 2;
 }
 
+// 0x6xkk
 void CHIP_8::LD_Vx_byte(uint16_t instruction) {
-    _v[(instruction & 0x0F00) >> 8] = instruction & 0x00FF;
+    _v[(instruction & 0x0F00) >> 8] = instruction & 0xFF;
     _pc += 2;
-    
 }
 
+// 0x7xkk
 void CHIP_8::ADD_Vx_byte(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] += instruction & 0xFF;
     _pc += 2;
 }
 
+// 0x8xy0
 void CHIP_8::LD_Vx_Vy(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] = _v[(instruction & 0x00F0) >> 4];
     _pc += 2;
 }
 
+// 0x8xy1
 void CHIP_8::OR_Vx_Vy(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] |= _v[(instruction & 0x00F0) >> 4];
     _pc += 2;
 }
 
+// 0x8xy2
 void CHIP_8::AND_Vx_Vy(uint16_t instruction) { 
     _v[(instruction & 0x0F00) >> 8] &= _v[(instruction & 0x00F0) >> 4];
     _pc += 2;
 }
 
+// 0x8xy3
 void CHIP_8::XOR_Vx_Vy(uint16_t instruction) { 
     _v[(instruction & 0x0F00) >> 8] ^= _v[(instruction & 0x00F0) >> 4];
     _pc += 2;
 }
 
+// 0x8xy4
 void CHIP_8::ADD_Vx_Vy(uint16_t instruction) {
     auto val = _v[(instruction & 0x0F00) >> 8] + _v[(instruction & 0x00F0) >> 4];
-    _v[0xF] = 1 ? val > 0xFF : 0;
+    _v[0xF] = val > 0xFF ? 1 : 0;
     _v[(instruction & 0x0F00) >> 8] = val & 0xFF;
     _pc += 2;
 }
 
+// 0x8xy5
 void CHIP_8::SUB_Vx_Vy(uint16_t instruction) {
-    _v[0xF] = 1 ? _v[(instruction & 0x0F00) >> 8] > _v[(instruction & 0x00F0) >> 4] : 0;
+    _v[0xF] = _v[(instruction & 0x0F00) >> 8] > _v[(instruction & 0x00F0) >> 4] ? 1 : 0;
    _v[(instruction & 0x0F00) >> 8] -= _v[(instruction & 0x0F00) >> 4];
    _pc += 2;
 }
 
+// 0x8xy6
 void CHIP_8::SHR_Vx_Vy(uint16_t instruction) { 
-    _v[0xF] = _v[(instruction & 0x0F00) >> 8] & 0x8;
+    _v[0xF] = _v[(instruction & 0x0F00) >> 8] & 0x1;
     _v[(instruction & 0x0F00) >> 8] >>= 1;
     _pc += 2;
 }
 
+// 0x8xy7
 void CHIP_8::SUBN_Vx_Vy(uint16_t instruction) {
-    _v[0xF] = 1 ? _v[(instruction & 0x00F0) >> 4] > _v[(instruction & 0x0F00) >> 8] : 0;
+    _v[0xF] = _v[(instruction & 0x00F0) >> 4] > _v[(instruction & 0x0F00) >> 8] ? 1 : 0;
     _v[(instruction & 0x0F00) >> 8] = _v[(instruction & 0x00F0) >> 4] - _v[(instruction & 0x0F00) >> 8];
     _pc += 2;
 }
 
+// 0x8xyE
 void CHIP_8::SHL_Vx(uint16_t instruction) {
-    _v[0xF] = _v[(instruction & 0x0F00) >> 8] & 0x1;
+    _v[0xF] = _v[(instruction & 0x0F00) >> 8] & 0x8;
     _v[(instruction & 0x0F00) >> 8] <<= 1;
     _pc += 2;
 }
 
+// 0x9xy0
 void CHIP_8::SNE_Vx_Vy(uint16_t instruction) {
     if (_v[(instruction & 0x0F00) >> 8] != _v[(instruction & 0x00F0) >> 4])
         _pc += 4;
@@ -277,40 +275,42 @@ void CHIP_8::SNE_Vx_Vy(uint16_t instruction) {
     
 }
 
+// 0xAnnn
 void CHIP_8::LD_I_addr(uint16_t instruction) {
     _index = instruction & 0xFFF;
     _pc += 2;
     
 }
 
+// 0xBnnn
 void CHIP_8::JP_V0_addr(uint16_t instruction) {
     _pc = (instruction & 0xFFF) + _v[0];
 }
 
+// 0xCxkk
 void CHIP_8::RND_Vx_byte(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] = (rand() % 256) & (instruction & 0xFF);
     _pc += 2;
 }
 
+// 0xDxyn
 void CHIP_8::DRW_Vx_Vy_nibble(uint16_t instruction) {
-    auto vx = (instruction & 0x0F00) >> 8;
-    auto vy = (instruction & 0x00F0) >> 4;
+    auto vx = _v[(instruction & 0x0F00) >> 8];
+    auto vy = _v[(instruction & 0x00F0) >> 4];
     auto height = (instruction & 0x000F);
     uint8_t pixel;
     
     _v[0xF] = 0;
 
-    for (auto yline = _index; yline < _index + height; ++yline) {
-        pixel = _mmu.read_byte(yline);
+    for (auto yline = 0; yline < height; ++yline) {
+        pixel = _mmu.read_byte(_index + yline);
         // display at Vx, Vy coordinate
         for (auto xline = 0; xline < 8; ++xline) {
             if ((pixel & (0x80 >> xline)) != 0) {
-                //if (_graphics.collision(vx + xline, (vy + yline) * 64) == 1) {
-                if (_graphics._display_buffer[(vx + xline + ((vy + yline) * 64)) % 2048] == 1) {
+                if (_graphics.collision(vx + xline, ((vy + yline) * 64)) == 1) {
                     _v[0xF] = 1;
                 }
-                // _graphics.load_buffer(vx + xline, (vy + yline) * 64);
-                _graphics._display_buffer[vx + xline + ((vy + yline) * 64) % 2048] ^= 1;
+                _graphics.load_buffer(vx + xline, ((vy + yline) * 64));
             }
         }
     }
@@ -318,12 +318,15 @@ void CHIP_8::DRW_Vx_Vy_nibble(uint16_t instruction) {
     _pc += 2;
 }
 
+// 0xEx9E
 void CHIP_8::SKP_Vx(uint16_t instruction) {
     if (_key[_v[(instruction & 0x0F00) >> 8]] != 0)
         _pc += 4;
     else
         _pc += 2;
 }
+
+// 0xExA1
 void CHIP_8::SKNP_Vx(uint16_t instruction) {
     if (_key[_v[(instruction & 0x0F00) >> 8]] == 0)
         _pc += 4;
@@ -331,11 +334,13 @@ void CHIP_8::SKNP_Vx(uint16_t instruction) {
         _pc += 2;
 }
 
+// 0xFx07
 void CHIP_8::LD_Vx_DT(uint16_t instruction) {
     _v[(instruction & 0x0F00) >> 8] = _delay_timer;
     _pc += 2;
 }
 
+// 0xFx0A
 void CHIP_8::LD_Vx_K(uint16_t instruction) {
     while (true) {
         for (auto i = 0; i < 16; ++i) {
@@ -348,16 +353,19 @@ void CHIP_8::LD_Vx_K(uint16_t instruction) {
     }
 }
 
+// 0xFx15
 void CHIP_8::LD_DT_Vx(uint16_t instruction) {
     _delay_timer = _v[(instruction & 0x0F00) >> 8];
     _pc += 2;
 }
 
+// 0xFx18
 void CHIP_8::LD_ST_Vx(uint16_t instruction) {
     _sound_timer = _v[(instruction & 0x0F00) >> 8];
     _pc += 2;
 }
 
+// 0xFx1E
 void CHIP_8::ADD_I_Vx(uint16_t instruction) {
     if (_index + _v[(instruction & 0x0F00) >> 8] > 0xFFF)
         _v[0xF] = 1;
@@ -368,35 +376,37 @@ void CHIP_8::ADD_I_Vx(uint16_t instruction) {
     _pc += 2;
 }
 
+// 0xFx29
 void CHIP_8::LD_F_Vx(uint16_t instruction) {
     _index = _v[(instruction & 0x0F00) >> 8] * 0x5;
     _pc += 2;
 }
 
+// 0xFx33
 void CHIP_8::LD_B_Vx(uint16_t instruction) {
     auto reg = (instruction & 0x0F00) >> 8;
     _mmu.write_byte(_index, _v[reg] / 100);
     _mmu.write_byte(_index + 1, (_v[reg] / 10) % 10);
-    _mmu.write_byte(_index + 2, _v[reg] % 10);
+    _mmu.write_byte(_index + 2, (_v[reg] % 100) % 10);
     _pc += 2;
 }
 
+// 0xFx55
 void CHIP_8::LD_I_Vx(uint16_t instruction) {
     auto reg = (instruction & 0x0F00) >> 8;
-    auto idx = _index;
-    for (auto i = 0; i < reg; ++i) {
-        _mmu.write_byte(idx, _v[i]);
-        ++idx;
+    for (auto i = 0; i <= reg; ++i) {
+        _mmu.write_byte(_index + i, _v[i]);
     }
+    _index += ((instruction & 0x0F00) >> 8) + 1;
     _pc += 2;
 }
 
+// 0xFx65
 void CHIP_8::LD_Vx_I(uint16_t instruction) {
     auto reg = (instruction & 0x0F00) >> 8;
-    auto idx = _index;
-    for (auto i = 0; i < reg; ++i) {
-        _v[i] = _mmu.read_byte(idx);
-        ++idx;
+    for (auto i = 0; i <= reg; ++i) {
+        _v[i] = _mmu.read_byte(_index + i);
     }
+    _index += ((instruction & 0x0F00) >> 8) + 1;
     _pc += 2;
 }

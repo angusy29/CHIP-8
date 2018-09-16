@@ -92,7 +92,7 @@ int main() {
             chip.set_draw_flag(false);
 
             for (auto i = 0; i < 2048; ++i) {
-                uint8_t pixel = chip.get_graphics().get_display_buffer()[i];
+                uint8_t pixel = chip.get_graphics()._display_buffer[i];
                 pixels[i] = (0x00FFFFFF * pixel) | 0xFF000000;
             }
 
