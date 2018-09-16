@@ -29,12 +29,19 @@ class CHIP_8 {
         uint8_t _sound_timer;
 
         uint8_t _key[16];    // hex based keypad 0x0 -0xF
+        bool _drawFlag;
 
         MMU _mmu;
         Graphics _graphics;
     public:
         CHIP_8(MMU &mmu, Graphics &graphics);
         void emulate_cycle();
+        void set_key(uint8_t key);
+        void unset_key(uint8_t key);
+        bool get_draw_flag();
+        void set_draw_flag(bool draw);
+        Graphics get_graphics();
+        MMU get_mmu();
 
         /********************/
         /* Stack operations */

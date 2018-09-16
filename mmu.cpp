@@ -29,15 +29,18 @@ uint16_t MMU::read_instruction(uint16_t addr) {
     uint16_t lo = addr;
     uint16_t hi = addr + 1;
 
+    printf("Accessing memory address %08" PRIx16 "\n", addr);
+
     if (0x000 <= addr && addr <= 0x1FF) {
         return (_interpreter[lo] << 8) | _interpreter[hi];
     }
 
     if (0x200 <= addr && addr <= 0xFFF) {
+        printf("%08" PRIx8 " ", _program[addr - 0x200]);
         return (_program[lo - 0x200] << 8) | _program[hi - 0x200];
     }
 
-    printf("Accessing invalid memory address %08" PRIx16 "\n", addr);
+    // printf("Accessing invalid memory address %08" PRIx16 "\n", addr);
     return 0;
 }
 
@@ -69,5 +72,5 @@ void MMU::print_rom() {
     for (auto i = 0; i < PROGRAM_MEMORY_SIZE; ++i) {
         printf("%08" PRIx8 " ", _program[i]);
     }
-    std::cout << "=====End program memory=====\n";
+    std::cout << "\n=====End program memory=====\n";
 }

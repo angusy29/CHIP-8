@@ -36,6 +36,7 @@ CHIP_8::CHIP_8(MMU &mmu, Graphics &graphics) {
 void CHIP_8::emulate_cycle() {
     // fetch
     uint16_t instruction = _mmu.read_instruction(_pc);
+    printf("Executing instruction %08" PRIx16 "\n", instruction);
 
     // decode and execute
     switch (instruction & 0xF000) {
@@ -84,7 +85,7 @@ void CHIP_8::emulate_cycle() {
                 default: break;
             }
         case 0xF000:
-            switch (instruction & 0xFF) {
+            switch (instruction & 0x00FF) {
                 case 0x0007: LD_Vx_DT(instruction); break;
                 case 0x000A: LD_Vx_K(instruction); break;
                 case 0x0015: LD_DT_Vx(instruction); break;
@@ -114,6 +115,30 @@ void CHIP_8::emulate_cycle() {
     }
 }
 
+void CHIP_8::set_key(uint8_t key) {
+    _key[key] = 1;
+}
+
+void CHIP_8::unset_key(uint8_t key) {
+    _key[key] = 0;
+}
+
+bool CHIP_8::get_draw_flag() {
+    return _drawFlag;
+}
+
+void CHIP_8::set_draw_flag(bool draw) {
+    _drawFlag = draw;
+}
+
+Graphics CHIP_8::get_graphics() {
+    return _graphics;
+}
+
+MMU CHIP_8::get_mmu() {
+    return _mmu;
+}
+
 void CHIP_8::stack_push() {
     _stack[_sp] = _pc;
     ++_sp;
@@ -131,6 +156,7 @@ void CHIP_8::CHIP_8::SYS_addr(uint16_t instruction) {
 }
 
 void CHIP_8::CLS() {
+    _drawFlag = true;
     _pc += 2;
 }
 
@@ -267,13 +293,14 @@ void CHIP_8::DRW_Vx_Vy_nibble(uint16_t instruction) {
         // display at Vx, Vy coordinate
         for (auto xline = 0; xline < 8; ++xline) {
             if ((pixel & (0x80 >> xline)) != 0) {
-                if (_graphics.collision(vx + xline, vy + idx)) {
+                if (_graphics.collision(vx + xline, (vy + idx) * 64)) {
                     _v[0xF] = 1;
                 }
-                _graphics.load_buffer(vx + xline, vy + idx);
+                _graphics.load_buffer(vx + xline, (vy + idx) * 64);
             }
         }
     }
+    _drawFlag = true;
     _pc += 2;
 }
 
