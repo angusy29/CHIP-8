@@ -11,7 +11,7 @@ class MMU {
         const static int INTERPRETER_MEMORY_SIZE = 512;
         const static int PROGRAM_MEMORY_SIZE = 3584;
 
-        uint8_t _interpreter[INTERPRETER_MEMORY_SIZE];       // 0x000 - 0x1FF
+        uint16_t _interpreter[INTERPRETER_MEMORY_SIZE];       // 0x000 - 0x1FF
         uint8_t _program[PROGRAM_MEMORY_SIZE];               // 0x200 - 0xFFF
     public:
         MMU();

@@ -6,10 +6,11 @@
 #include <stdint.h>
 
 class Graphics {
-    private:
-        std::array<int, 64 * 32> _display_buffer;
     public:
+        std::array<int, 64 * 32> _display_buffer;
+
         Graphics();
+        void reset();
         void load_buffer(uint8_t x, uint8_t y);
         bool collision(uint8_t x, uint8_t y);
         std::array<int, 64 * 32> get_display_buffer();
