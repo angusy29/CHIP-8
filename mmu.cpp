@@ -62,7 +62,6 @@ uint16_t MMU::read_instruction(uint16_t addr) {
     }
 
     if (0x200 <= addr && addr <= 0xFFF) {
-        printf("%08" PRIx8 " ", _program[addr - 0x200]);
         return (_program[lo - 0x200] << 8) | _program[hi - 0x200];
     }
 

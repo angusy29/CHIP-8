@@ -58,6 +58,7 @@ void render_screen(CHIP_8 &chip, SDL_Texture *sdlTexture, SDL_Renderer *renderer
 
     // Update SDL texture
     SDL_UpdateTexture(sdlTexture, NULL, pixels, 64 * sizeof(Uint32));
+
     // Clear screen and render
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, sdlTexture, NULL, NULL);
@@ -81,8 +82,7 @@ int main(int argc, char* argv[]) {
     int height = 512;
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-        std::cout << "SDL could not be initialized, SDL_Error: " << SDL_GetError() << "\n";
-        exit(1);
+        throw SDL_GetError();
     }
 
     SDL_Window* window = SDL_CreateWindow("CHIP-8 Emulator",
@@ -90,8 +90,7 @@ int main(int argc, char* argv[]) {
                             width, height, SDL_WINDOW_SHOWN);
 
     if (window == NULL) {
-        std::cout << "SDL could not create window, SDL_Error: " << SDL_GetError() << "\n";
-        exit(1);
+        throw SDL_GetError();
     }
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
@@ -114,7 +113,6 @@ int main(int argc, char* argv[]) {
             chip.set_draw_flag(false);
             render_screen(chip, sdlTexture, renderer);
         }
-
         std::this_thread::sleep_for(std::chrono::microseconds(1200));
     }
 

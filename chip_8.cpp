@@ -10,8 +10,6 @@ CHIP_8::CHIP_8(MMU &mmu, Graphics &graphics) {
     memset(_key, 0, sizeof(_key));          // clear keypad
     _mmu = mmu;
     _graphics = graphics;
-
-    srand(time(NULL));
 }
 
 void CHIP_8::emulate_cycle() {
@@ -47,7 +45,7 @@ void CHIP_8::emulate_cycle() {
                 case 0x0007: SUBN_Vx_Vy(instruction); break;
                 case 0x000E: SHL_Vx(instruction); break;
                 default:
-                    printf("Unimplemented opcode %08" PRIx16 "\n", instruction); 
+                    printf("Unimplemented opcode %08" PRIx16 "\n", instruction);
                     break;
             }
             break;
@@ -387,7 +385,7 @@ void CHIP_8::LD_B_Vx(uint16_t instruction) {
     auto reg = (instruction & 0x0F00) >> 8;
     _mmu.write_byte(_index, _v[reg] / 100);
     _mmu.write_byte(_index + 1, (_v[reg] / 10) % 10);
-    _mmu.write_byte(_index + 2, (_v[reg] % 100) % 10);
+    _mmu.write_byte(_index + 2, _v[reg] % 10);
     _pc += 2;
 }
 
